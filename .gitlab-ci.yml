@@ -1,20 +1,35 @@
 image: docker:20.10.16
 services:
   - docker:20.10.16-dind
+before_script:
+  - echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USER} --password-stdin
 
 stages:
   - build
+  - test
+  - release
 
 variables:
-  CONTAINER_IMAGE: dsolopenkov/k8s-with-gitlab:${CI_COMMIT_SHORT_SHA}
+  # CONTAINER_IMAGE: dsolopenkov/k8s-with-gitlab:${CI_COMMIT_SHORT_SHA}
+  CONTAINER_REGISTRY_IMAGE: dsolopenkov/k8s-with-gitlab
+  CONTAINER_TEST_IMAGE: $CONTAINER_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CONTAINER_REGISTRY_IMAGE:latest
 
-build:
+build_image:
   stage: build
   script:
-    - echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USER} --password-stdin
-    - docker build -t ${CONTAINER_IMAGE} .
-    - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE}
-    - docker tag ${CONTAINER_IMAGE} dsolopenkov/k8s-with-gitlab:latest
-    - docker push ${CONTAINER_IMAGE}
+    - docker build --pull -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+  tags:
+    - docker
+
+release_image:
+  stage: release
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE
+  only:
+    - main
   tags:
     - docker
