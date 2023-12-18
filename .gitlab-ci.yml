@@ -19,6 +19,7 @@ build_image:
   stage: build
   script:
     - docker build --pull -t $CONTAINER_TEST_IMAGE .
+    - echo "$CONTAINER_TEST_IMAGE"
     - docker push $CONTAINER_TEST_IMAGE
   tags:
     - docker
